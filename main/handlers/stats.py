@@ -7,6 +7,7 @@ from pydantic import (
     computed_field,
     field_validator,
 )
+from ninja.errors import HttpError
 from django.http import HttpRequest
 from functools import cached_property
 
@@ -95,7 +96,7 @@ async def DailyAccuracyHandler(request: HttpRequest):
     env = request.GET.get("env")
     date = request.GET.get("date")
     if not date:
-        return FailedResponse(message="date is required")
+        raise HttpError(400, "date is required")
     # 暂时不要缓存
     # r = models.DailyStats.objects.filter(env=env, date=date).first()
     # if r:
@@ -108,7 +109,7 @@ async def DailyAccuracyHandler(request: HttpRequest):
                           rates=stats["rates"],
                           labels=stats["labels"])
     # r.save()
-    return OkResponse(data=results.DailyStats.model_validate(r))
+    return results.DailyStats.model_validate(r)
 
 
 async def WeeklyAccuracyHandler(request: HttpRequest):
@@ -143,7 +144,7 @@ async def WeeklyAccuracyHandler(request: HttpRequest):
             labels=stats["labels"])
         # r.save()
         result.append(results.WeeklyStats.model_validate(r))
-    return OkResponse(data=result)
+    return result
 
 
 class RangeAccuracyRequest(BaseModel):
@@ -172,21 +173,23 @@ async def RangeAccuracyHandler(request: HttpRequest):
     """范围的准确率"""
     req = RangeAccuracyRequest(**request.GET)
     if not req.start_date or not req.end_date:
-        return FailedResponse(message="start_date and end_date are required")
+        # return FailedResponse(message="start_date and end_date are required")
+        raise HttpError(400, "start_date and end_date are required")
     docs = await mongo_client.find_by_range(req.start_date,
                                             req.end_date,
                                             env=req.env)
     r = docs_stats(docs)
     r["start_date"] = req.start_date
     r["end_date"] = req.end_date
-    return OkResponse(data=r)
+    return r
 
 
 async def RangeDailyAccuracyHandler(request: HttpRequest):
     """范围的每日准确率"""
     req = RangeAccuracyRequest(**request.GET)
     if not req.start_date or not req.end_date:
-        return FailedResponse(message="start_date and end_date are required")
+        # return FailedResponse(message="start_date and end_date are required")
+        raise HttpError(400, "start_date and end_date are required")
 
     result = []
     date = req.start_date
@@ -204,4 +207,4 @@ async def RangeDailyAccuracyHandler(request: HttpRequest):
                 timedelta(days=1)).strftime("%Y-%m-%d")
         if date > req.end_date:
             break
-    return OkResponse(data=result)
+    return result
