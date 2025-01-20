@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "llm-reports"
+version = "0.1.0"
+description = ""
+authors = ["gaojian <A24619@autelsz.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+django = "^5.1.5"
+django-ninja = "^1.3.0"
+motor = "^3.6.1"
+uvicorn = "^0.34.0"
+mysqlclient = "^2.2.7"
+
+
+[[tool.poetry.source]]
+name = "aliyun"
+url = "https://mirrors.aliyun.com/pypi/simple"
+priority = "primary"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
