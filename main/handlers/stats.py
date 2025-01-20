@@ -49,13 +49,13 @@ class Counter(BaseModel):
     def rates(self) -> dict[str, str]:
         return {
             "SUCCESS":
-            f"{round(self.SUCCESS / self.total*100, 2)}%",
-            "ERROR_STT":
-            f"{round(self.ERROR_STT / self.total*100, 2)}%",
-            "ERROR_INTENT":
-            f"{round(self.ERROR_INTENT / self.total*100, 2)}%",
-            "ERROR_TASK_RUNNING":
-            f"{round(self.ERROR_TASK_RUNNING / self.total*100, 2)}%",
+            f"{1 - round(self.SUCCESS / self.total*100, 3)}%",
+            "SUCCESS_STT_RATE":
+            f"{1 - round(self.ERROR_STT / self.total*100, 3)}%",
+            "SUCCESS_INTENT_RATE":
+            f"{1 - round(self.ERROR_INTENT / self.total*100, 3)}%",
+            "SUCCESS_TASK_RUNNING_RATE":
+            f"{1 - round(self.ERROR_TASK_RUNNING / self.total*100, 3)}%",
         }
 
     @computed_field
@@ -149,7 +149,8 @@ async def WeeklyAccuracyHandler(request: HttpRequest):
 
 class RangeAccuracyRequest(BaseModel):
     env: Optional[str] = ""
-    start_date: Optional[str] = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+    start_date: Optional[str] = (datetime.now() -
+                                 timedelta(days=30)).strftime("%Y-%m-%d")
     end_date: Optional["str"] = datetime.now().strftime("%Y-%m-%d")
 
     @field_validator("start_date")
