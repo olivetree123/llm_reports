@@ -139,7 +139,8 @@ async def WeeklyAccuracyHandler(request: HttpRequest):
             week_end_date=(week_start_date +
                            timedelta(days=7)).strftime("%Y-%m-%d"),
             counts=stats["counts"],
-            rates=stats["rates"])
+            rates=stats["rates"],
+            labels=stats["labels"])
         # r.save()
         result.append(results.WeeklyStats.model_validate(r))
     return OkResponse(data=result)
