@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+from typing import List, Optional, Union
 from datetime import datetime, timedelta
 
 from pydantic import (
@@ -19,6 +19,70 @@ from main import models, results
 from main.utils.mongo import mongo_client
 
 logger = logging.getLogger(__name__)
+
+
+# {
+#     "input1": "how much energy did i use for charging in December 12, 2024",
+#     "input2": [
+#       {
+#         "role": "user",
+#         "content": "how much energy did i use for charging in december 12, 2024"
+#       }
+#     ],
+#     "output1": "View_history_charging_energy",
+#     "output2": {
+#       "text": "how much energy did i use for charging in december 12, 2024",
+#       "intent": "用户历史充电电量",
+#       "slots": {
+#         "起止日期": {
+#           "起始日期": "2024-12-12",
+#           "结束日期": "2024-12-12"
+#         }
+#       },
+#       "model_version": "llama0.3.1"
+#     },
+#     "detect_time_cost": 0.930589,
+#     "total_time_cost": 1.055931,
+#     "client_type": "app",
+#     "language": "english",
+#     "provider": "LLMAppEnglishProvider",
+#     "detector": "EndpointVllmClient",
+#     "start_time": "2025-01-18T02:01:43.212783+00:00",
+#     "end_time": "2025-01-18T02:01:44.268714+00:00",
+#     "timezone_str": "UTC",
+#     "env": "dev",
+#     "input1_text": "how much energy did i use for charging in December 12, 2024",
+#     "session_text": "",
+#     "date": "2025-01-18",
+#     "week_start_date": "2025-01-13",
+#     "week_end_date": "2025-01-19"
+#   }
+class NluData(BaseModel):
+    env: Optional[str] = ""
+    user_id: Optional[str] = ""
+    input1: Union[str, dict]
+    input1_text: str
+    input2: List[dict]
+    output1: str
+    output2: dict
+    detect_time_cost: float
+    total_time_cost: float
+    client_type: str
+    language: str
+    provider: str
+    detector: str
+    start_time: str
+    end_time: str
+    timezone_str: str
+    session_text: str
+    date: str
+    week_start_date: str
+    week_end_date: str
+
+    @computed_field
+    @property
+    def output_intent(self) -> str:
+        return self.output2["intent"]
 
 
 class Counter(BaseModel):
@@ -213,4 +277,29 @@ async def RangeDailyAccuracyHandler(request: HttpRequest):
                 timedelta(days=1)).strftime("%Y-%m-%d")
         if date > req.end_date:
             break
+    return result
+
+
+async def ListErrorsHandler(request: HttpRequest):
+    """列出所有错误"""
+    env = request.GET.get("env")
+    date = request.GET.get("date")
+    docs = await mongo_client.find_errors(env=env, date=date)
+    result = []
+    for doc in docs:
+        r = NluData(**doc["custom"]).model_dump()
+        evaluation = doc["evaluation"]["message_evaluation"]
+        if not evaluation:
+            r["label_type"] = ""
+            result.append(r)
+            continue
+        for _, value in evaluation.items():
+            if value["__sys_message_type"] == "receive":
+                eval_result = value["intent"]
+                # `eval_result` is one of the following:
+                # - "ERROR_STT", "ERROR_INTENT", "ERROR_TASK_RUNNING", "ERROR_LANGUAGE",
+                # - "ERROR_TRANSLATE", "ERROR_LLM_ANSWER", "ERROR_UNKNOWN"
+                r["label_type"] = eval_result
+                break
+        result.append(r)
     return result

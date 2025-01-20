@@ -14,3 +14,4 @@ stats_router.get("/stats/weekly_accuracy", stats.WeeklyAccuracyHandler)
 stats_router.get("/stats/range_accuracy", stats.RangeAccuracyHandler)
 stats_router.get("/stats/range_daily_accuracy",
                  stats.RangeDailyAccuracyHandler)
+stats_router.get("/stats/list_errors", stats.ListErrorsHandler)
