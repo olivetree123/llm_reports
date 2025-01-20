@@ -47,15 +47,20 @@ class Counter(BaseModel):
     @computed_field
     @cached_property
     def rates(self) -> dict[str, str]:
+        success_rate = round(self.SUCCESS / self.total *
+                             100, 3) if self.total > 0 else 0
+        stt_rate = 100 - round(self.ERROR_STT / self.total *
+                               100, 3) if self.total > 0 else 0
+        intent_rate = 100 - round(self.ERROR_INTENT / self.total *
+                                  100, 3) if self.total > 0 else 0
+        task_running_rate = 100 - round(
+            self.ERROR_TASK_RUNNING / self.total *
+            100, 3) if self.total > 0 else 0
         return {
-            "SUCCESS":
-            f"{1 - round(self.SUCCESS / self.total*100, 3)}%",
-            "SUCCESS_STT_RATE":
-            f"{1 - round(self.ERROR_STT / self.total*100, 3)}%",
-            "SUCCESS_INTENT_RATE":
-            f"{1 - round(self.ERROR_INTENT / self.total*100, 3)}%",
-            "SUCCESS_TASK_RUNNING_RATE":
-            f"{1 - round(self.ERROR_TASK_RUNNING / self.total*100, 3)}%",
+            "SUCCESS": f"{success_rate}%",
+            "SUCCESS_STT_RATE": f"{stt_rate}%",
+            "SUCCESS_INTENT_RATE": f"{intent_rate}%",
+            "SUCCESS_TASK_RUNNING_RATE": f"{task_running_rate}%",
         }
 
     @computed_field
