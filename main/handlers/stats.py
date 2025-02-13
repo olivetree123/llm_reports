@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 
 from pydantic import (
     BaseModel,
+    Field,
     computed_field,
     field_validator,
 )
@@ -111,15 +112,11 @@ class Counter(BaseModel):
     @computed_field
     @cached_property
     def rates(self) -> dict[str, str]:
-        success_rate = round(self.SUCCESS / self.total *
-                             100, 3) if self.total > 0 else 0
-        stt_rate = 100 - round(self.ERROR_STT / self.total *
-                               100, 3) if self.total > 0 else 0
-        intent_rate = 100 - round(self.ERROR_INTENT / self.total *
-                                  100, 3) if self.total > 0 else 0
-        task_running_rate = 100 - round(
-            self.ERROR_TASK_RUNNING / self.total *
-            100, 3) if self.total > 0 else 0
+        success_rate = round(self.SUCCESS / self.total * 100, 3) if self.total > 0 else 0
+        stt_rate = 100 - round(self.ERROR_STT / self.total * 100, 3) if self.total > 0 else 0
+        intent_rate = 100 - round(self.ERROR_INTENT / self.total * 100, 3) if self.total > 0 else 0
+        task_running_rate = 100 - round(self.ERROR_TASK_RUNNING / self.total *
+                                        100, 3) if self.total > 0 else 0
         return {
             "SUCCESS": f"{success_rate}%",
             "SUCCESS_STT_RATE": f"{stt_rate}%",
@@ -203,14 +200,13 @@ async def WeeklyAccuracyHandler(request: HttpRequest):
                 break
             continue
         stats = docs_stats(docs)
-        r = models.WeeklyStats(
-            env=env,
-            week_start_date=week_start_date.strftime("%Y-%m-%d"),
-            week_end_date=(week_start_date +
-                           timedelta(days=7)).strftime("%Y-%m-%d"),
-            counts=stats["counts"],
-            rates=stats["rates"],
-            labels=stats["labels"])
+        r = models.WeeklyStats(env=env,
+                               week_start_date=week_start_date.strftime("%Y-%m-%d"),
+                               week_end_date=(week_start_date +
+                                              timedelta(days=7)).strftime("%Y-%m-%d"),
+                               counts=stats["counts"],
+                               rates=stats["rates"],
+                               labels=stats["labels"])
         # r.save()
         result.append(results.WeeklyStats.model_validate(r))
     return result
@@ -218,9 +214,9 @@ async def WeeklyAccuracyHandler(request: HttpRequest):
 
 class RangeAccuracyRequest(BaseModel):
     env: Optional[str] = ""
-    start_date: Optional[str] = (datetime.now() -
-                                 timedelta(days=30)).strftime("%Y-%m-%d")
-    end_date: Optional["str"] = datetime.now().strftime("%Y-%m-%d")
+    start_date: Optional[str] = Field(
+        default_factory=lambda: (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d"))
+    end_date: Optional[str] = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d"))
 
     @field_validator("start_date")
     def validate_start_date(cls, v):
@@ -245,9 +241,7 @@ async def RangeAccuracyHandler(request: HttpRequest):
     if not req.start_date or not req.end_date:
         # return FailedResponse(message="start_date and end_date are required")
         raise HttpError(400, "start_date and end_date are required")
-    docs = await mongo_client.find_by_range(req.start_date,
-                                            req.end_date,
-                                            env=req.env)
+    docs = await mongo_client.find_by_range(req.start_date, req.end_date, env=req.env)
     r = docs_stats(docs)
     r["start_date"] = req.start_date
     r["end_date"] = req.end_date
@@ -262,7 +256,7 @@ async def RangeDailyAccuracyHandler(request: HttpRequest):
         raise HttpError(400, "start_date and end_date are required")
 
     result = []
-    date = req.start_date
+    date = req.end_date
     while True:
         docs = await mongo_client.find_by_date(date=date, env=req.env)
         if docs:
@@ -273,9 +267,8 @@ async def RangeDailyAccuracyHandler(request: HttpRequest):
                                   rates=stats["rates"],
                                   labels=stats["labels"])
             result.append(results.DailyStats.model_validate(r))
-        date = (datetime.strptime(date, "%Y-%m-%d") +
-                timedelta(days=1)).strftime("%Y-%m-%d")
-        if date > req.end_date:
+        date = (datetime.strptime(date, "%Y-%m-%d") + timedelta(days=-1)).strftime("%Y-%m-%d")
+        if date < req.start_date:
             break
     return result
 
