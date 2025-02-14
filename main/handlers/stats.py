@@ -283,8 +283,9 @@ async def ListErrorsHandler(request: HttpRequest):
         r = NluData(**doc["custom"]).model_dump()
         evaluation = doc["evaluation"]["message_evaluation"]
         if not evaluation:
-            r["label_type"] = ""
-            result.append(r)
+            # 没有标注
+            # r["label_type"] = ""
+            # result.append(r)
             continue
         for _, value in evaluation.items():
             if value["__sys_message_type"] == "receive":
